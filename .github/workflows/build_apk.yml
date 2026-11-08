@@ -13,48 +13,21 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Prepare Android Project
+    - name: Prepare Project and Resources
       run: |
-        # Flatten directory if nested inside kalvers_claude_pro_android folder
         if [ -d "kalvers_claude_pro_android" ]; then
-          cp -r kalvers_claude_pro_android/* .
+          cp -r kalvers_claude_pro_android/* . 2>/dev/null || true
         fi
-
-        # If zip is present, extract it cleanly
-        if [ -f "Kalvers_Claude_Pro_Android_Source.zip" ]; then
-          unzip -q -o Kalvers_Claude_Pro_Android_Source.zip -d temp_src
-          if [ -d "temp_src/kalvers_claude_pro_android" ]; then
-            cp -r temp_src/kalvers_claude_pro_android/* .
-          else
-            cp -r temp_src/* .
-          fi
-          rm -rf temp_src
-        fi
-
-        # Ensure all required Android resource XML files exist
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+        echo "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8" > gradle.properties
+        echo "android.useAndroidX=true" >> gradle.properties
         mkdir -p app/src/main/res/values
-        cat << 'EOF' > app/src/main/res/values/strings.xml
-<resources>
-    <string name="app_name">Kalvers Claude Pro</string>
-</resources>
-EOF
-
-        cat << 'EOF' > app/src/main/res/values/themes.xml
-<resources>
-    <style name="Theme.KalversClaudePro" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <item name="android:statusBarColor">#0F172A</item>
-        <item name="android:navigationBarColor">#0F172A</item>
-    </style>
-</resources>
-EOF
-
+        echo '<resources><string name="app_name">Kalvers Claude Pro</string></resources>' > app/src/main/res/values/strings.xml
+        echo '<resources><style name="Theme.KalversClaudePro" parent="Theme.AppCompat.DayNight.NoActionBar"/></resources>' > app/src/main/res/values/themes.xml
         touch app/proguard-rules.pro
-
-        # Fix repository preference in settings.gradle
         if [ -f "settings.gradle" ]; then
           sed -i 's/FAIL_ON_PROJECT_REPOS/PREFER_SETTINGS/g' settings.gradle || true
         fi
-
         chmod +x gradlew || true
 
     - name: Set up JDK 17
@@ -62,10 +35,6 @@ EOF
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
-
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
 
     - name: Build Android APK
       run: |
@@ -79,4 +48,6 @@ EOF
       uses: actions/upload-artifact@v4
       with:
         name: Kalvers_Claude_Pro_APK
-        path: app/build/outputs/apk/debug/*.apk
+        path: |
+          app/build/outputs/apk/debug/*.apk
+          **/build/outputs/apk/debug/*.apk
