@@ -8,23 +8,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kalvers_claude_pro_android
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
-
-    - name: Unpack Android Source
-      run: |
-        if [ -f "Kalvers_Claude_Pro_Android_Source.zip" ]; then
-          unzip -q -o Kalvers_Claude_Pro_Android_Source.zip -d extracted_temp
-          if [ -d "extracted_temp/kalvers_claude_pro_android" ]; then
-            cp -r extracted_temp/kalvers_claude_pro_android/* .
-          else
-            cp -r extracted_temp/* .
-          fi
-          rm -rf extracted_temp
-        fi
-        chmod +x gradlew || true
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -32,21 +22,14 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.5'
+    - name: Grant Execute Permission to Gradlew
+      run: chmod +x gradlew || true
 
     - name: Build Android APK
-      run: |
-        if [ -f "./gradlew" ]; then
-          ./gradlew assembleDebug --stacktrace
-        else
-          gradle assembleDebug --stacktrace
-        fi
+      run: ./gradlew assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kalvers_Claude_Pro_APK
-        path: app/build/outputs/apk/debug/*.apk
+        path: kalvers_claude_pro_android/app/build/outputs/apk/debug/*.apk
