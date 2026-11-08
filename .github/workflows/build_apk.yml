@@ -36,10 +36,11 @@ jobs:
           sed -i 's/FAIL_ON_PROJECT_REPOS/PREFER_SETTINGS/g' settings.gradle || true
         fi
         
-        # Auto-fix Kotlin null safety in MainActivity.kt
+        # Fix exact Kotlin null-safety
         sed -i 's/nextAccount\./nextAccount!!\./g' app/src/main/java/com/kalvers/claudepro/MainActivity.kt || true
         sed -i 's/account\./account!!\./g' app/src/main/java/com/kalvers/claudepro/MainActivity.kt || true
         sed -i 's/return$/return@runOnUiThread/g' app/src/main/java/com/kalvers/claudepro/MainActivity.kt || true
+        sed -i '140,155s/return@runOnUiThread/return/g' app/src/main/java/com/kalvers/claudepro/MainActivity.kt || true
         
         chmod +x gradlew || true
 
