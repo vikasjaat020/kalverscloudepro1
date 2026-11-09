@@ -1,0 +1,54 @@
+name: Build Kalvers Claude Pro Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Prepare Project and Resources
+      run: |
+        # Subfolder se files root par copy karein if nested
+        if [ -d "kalvers_claude_pro_android" ]; then
+          cp -r kalvers_claude_pro_android/* . 2>/dev/null || true
+        fi
+
+        # If source zip is uploaded, extract it cleanly
+        if [ -f "Kalvers_Claude_Pro_Android_Source.zip" ]; then
+          unzip -q -o Kalvers_Claude_Pro_Android_Source.zip -d temp_src
+          cp -r temp_src/* . 2>/dev/null || true
+          rm -rf temp_src
+        fi
+
+        # AGP 8 compatibility: remove deprecated package tag from manifest
+        sed -i 's/package="com.kalvers.claudepro"//g' app/src/main/AndroidManifest.xml || true
+
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+        echo "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8" > gradle.properties
+        echo "android.useAndroidX=true" >> gradle.properties
+        chmod +x gradlew || true
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Build Android APK
+      run: |
+        ./gradlew assembleDebug --no-daemon --stacktrace
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kalvers_Claude_Pro_APK
+        path: |
+          app/build/outputs/apk/debug/*.apk
+          **/build/outputs/apk/debug/*.apk
