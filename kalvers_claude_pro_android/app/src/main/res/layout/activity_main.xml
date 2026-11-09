@@ -10,13 +10,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:padding="10dp"
         android:background="#0F172A"
         android:gravity="center_vertical">
 
         <ImageView
-            android:layout_width="38dp"
-            android:layout_height="38dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:src="@mipmap/ic_launcher"
             android:contentDescription="Kalvers Logo" />
 
@@ -24,7 +24,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="10dp"
+            android:layout_marginStart="8dp"
             android:orientation="vertical">
 
             <TextView
@@ -33,15 +33,28 @@
                 android:text="KALVERS CLAUDE PRO"
                 android:textColor="#F8FAFC"
                 android:textStyle="bold"
-                android:textSize="15sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Multi-Account Auto-Switcher"
                 android:textColor="#38BDF8"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
+
+        <Button
+            android:id="@+id/btnTelegram"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="✈️ Telegram"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#0088CC"
+            android:layout_marginEnd="6dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
 
         <TextView
             android:id="@+id/statusBadge"
@@ -50,12 +63,12 @@
             android:text="Ready"
             android:textColor="#10B981"
             android:textStyle="bold"
-            android:textSize="12sp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp" />
+            android:textSize="11sp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp" />
     </LinearLayout>
 
-    <!-- Account Selection Bar -->
+    <!-- Account Selection & Control Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -67,10 +80,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Account:"
+            android:text="Slot:"
             android:textColor="#94A3B8"
-            android:textSize="12sp"
-            android:layout_marginEnd="6dp" />
+            android:textSize="11sp"
+            android:layout_marginEnd="4dp" />
 
         <Spinner
             android:id="@+id/accountSpinner"
@@ -80,13 +93,27 @@
             android:backgroundTint="#38BDF8" />
 
         <Button
+            android:id="@+id/btnClearSession"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Logout Slot"
+            android:textSize="9sp"
+            android:textColor="#F87171"
+            android:backgroundTint="#1E293B"
+            android:layout_marginEnd="4dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp" />
+
+        <Button
             android:id="@+id/btnResetLimits"
             android:layout_width="wrap_content"
-            android:layout_height="32dp"
+            android:layout_height="30dp"
             android:text="Reset Limits"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:textColor="#CBD5E1"
-            android:backgroundTint="#1E293B" />
+            android:backgroundTint="#1E293B"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp" />
     </LinearLayout>
 
     <ProgressBar

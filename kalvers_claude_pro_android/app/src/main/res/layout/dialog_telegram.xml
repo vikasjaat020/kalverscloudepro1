@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#0F172A"
+    android:padding="20dp"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Join Kalvers Community"
+        android:textColor="#38BDF8"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Get exclusive updates, prompts, &amp; support"
+        android:textColor="#94A3B8"
+        android:textSize="12sp"
+        android:layout_marginBottom="14dp" />
+
+    <ImageView
+        android:id="@+id/imgTelegramQr"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:src="@drawable/telegram_qr"
+        android:contentDescription="Telegram QR Code"
+        android:scaleType="fitCenter"
+        android:background="#FFFFFF"
+        android:padding="6dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@KALVERSCHANNEL"
+        android:textColor="#F8FAFC"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnOpenTelegram"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="✈️ Open Telegram Channel"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:backgroundTint="#0088CC"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnCloseTelegram"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:text="Close"
+        android:textColor="#94A3B8"
+        android:textSize="12sp"
+        android:backgroundTint="#1E293B" />
+
+</LinearLayout>

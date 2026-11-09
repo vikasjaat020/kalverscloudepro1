@@ -1,5 +1,8 @@
 package com.kalvers.claudepro
 
+import android.content.Context
+import android.content.SharedPreferences
+
 data class ClaudeAccount(
     val id: Int,
     val name: String,
@@ -9,20 +12,65 @@ data class ClaudeAccount(
     var messageCount: Int = 0
 )
 
-class AccountSessionManager {
+class AccountSessionManager(context: Context) {
+    private val prefs: SharedPreferences = context.getSharedPreferences("kalvers_claude_pro_sessions", Context.MODE_PRIVATE)
     val accounts = mutableListOf<ClaudeAccount>()
     var activeAccountId = 1
 
     init {
         for (i in 1..15) {
+            val savedCookies = prefs.getString("account_${i}_cookies", null)
+            val isLogged = !savedCookies.isNullOrEmpty()
+            val savedStatus = if (isLogged) "Ready" else "Sign In Required"
             accounts.add(
                 ClaudeAccount(
                     id = i,
                     name = "Claude Account #$i",
-                    isLoggedIn = (i == 1 || i == 2),
-                    status = if (i == 1 || i == 2) "Ready" else "Sign In Required"
+                    isLoggedIn = isLogged,
+                    status = savedStatus
                 )
             )
+        }
+    }
+
+    fun saveSession(accountId: Int, cookies: String?, localStorage: String? = null) {
+        if (!cookies.isNullOrEmpty()) {
+            val editor = prefs.edit().putString("account_${accountId}_cookies", cookies)
+            if (!localStorage.isNullOrEmpty() && localStorage != "{}" && localStorage != "null") {
+                editor.putString("account_${accountId}_storage", localStorage)
+            }
+            editor.apply()
+
+            val acc = accounts.find { it.id == accountId }
+            acc?.let {
+                it.isLoggedIn = true
+                if (it.status == "Sign In Required") {
+                    it.status = "Ready"
+                }
+            }
+        }
+    }
+
+    fun getSavedCookies(accountId: Int): String? {
+        return prefs.getString("account_${accountId}_cookies", null)
+    }
+
+    fun getSavedStorage(accountId: Int): String? {
+        return prefs.getString("account_${accountId}_storage", null)
+    }
+
+    fun clearSession(accountId: Int) {
+        prefs.edit()
+            .remove("account_${accountId}_cookies")
+            .remove("account_${accountId}_storage")
+            .apply()
+
+        val acc = accounts.find { it.id == accountId }
+        acc?.let {
+            it.isLoggedIn = false
+            it.status = "Sign In Required"
+            it.resetTime = null
+            it.messageCount = 0
         }
     }
 
@@ -46,5 +94,10 @@ class AccountSessionManager {
             }
             it.resetTime = null
         }
+    }
+
+    fun updateAccountStatus(accountId: Int, status: String) {
+        val acc = accounts.find { it.id == accountId }
+        acc?.status = status
     }
 }

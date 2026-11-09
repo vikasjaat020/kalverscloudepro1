@@ -1,6 +1,8 @@
 package com.kalvers.claudepro
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.view.View
@@ -8,6 +10,7 @@ import android.webkit.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import java.io.File
 import java.io.InputStreamReader
 
@@ -24,6 +27,7 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
     private var currentHandoffCode: String? = null
     private val attemptedAccounts = mutableListOf<Int>()
     private var isTaskRunning = false
+    private var isSwitchingAccount = false
 
     private val incrementalPromptDirective = """
         [CRITICAL EXECUTION DIRECTIVE - IMMEDIATE FILE-BY-FILE OUTPUT]:
@@ -38,7 +42,7 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        sessionManager = AccountSessionManager()
+        sessionManager = AccountSessionManager(this)
 
         webView = findViewById(R.id.webView)
         statusBadge = findViewById(R.id.statusBadge)
@@ -59,16 +63,29 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
             appendLog("All account limits reset.")
         }
 
-        loadAccountSession(sessionManager.activeAccountId)
+        findViewById<Button>(R.id.btnClearSession).setOnClickListener {
+            confirmClearActiveSession()
+        }
+
+        findViewById<Button>(R.id.btnTelegram).setOnClickListener {
+            showTelegramDialog()
+        }
+
+        // Load initial account
+        loadInitialAccountSession(sessionManager.activeAccountId)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
+        // Disable DevTools inspection & tampering
+        WebView.setWebContentsDebuggingEnabled(false)
+
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.databaseEnabled = true
-        settings.userAgentString = settings.userAgentString.replace("; wv", "") // Real mobile browser UA
+        settings.setSupportMultipleWindows(false)
+        settings.userAgentString = settings.userAgentString.replace("; wv", "")
 
         webView.addJavascriptInterface(ClaudeAutomationBridge(this), "KalversBridge")
 
@@ -76,6 +93,27 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 injectAutomationScript()
+
+                // Auto-detect and save cookies for current account slot
+                val cm = CookieManager.getInstance()
+                val cookies = cm.getCookie("https://claude.ai")
+                val curUrl = url ?: ""
+                if (!cookies.isNullOrEmpty() && (cookies.contains("sessionKey") || curUrl.contains("/chat") || curUrl.contains("/new"))) {
+                    sessionManager.saveSession(sessionManager.activeAccountId, cookies)
+                    updateUI()
+                }
+
+                // Restore saved localStorage if available
+                val savedStorage = sessionManager.getSavedStorage(sessionManager.activeAccountId)
+                if (!savedStorage.isNullOrEmpty() && savedStorage != "null" && savedStorage != "{}") {
+                    val script = """
+                        try {
+                            var d = $savedStorage;
+                            for (var k in d) { window.localStorage.setItem(k, d[k]); }
+                        } catch(e) {}
+                    """.trimIndent()
+                    webView.evaluateJavascript(script, null)
+                }
             }
         }
     }
@@ -86,7 +124,7 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
             val script = InputStreamReader(assetStream).readText()
             webView.evaluateJavascript(script, null)
         } catch (e: Exception) {
-            appendLog("Injection error: ${e.message}")
+            appendLog("Injection notice: ${e.message}")
         }
     }
 
@@ -100,19 +138,121 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
         activeAccountSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedId = position + 1
-                if (selectedId != sessionManager.activeAccountId && !isTaskRunning) {
-                    sessionManager.activeAccountId = selectedId
-                    loadAccountSession(selectedId)
+                if (selectedId != sessionManager.activeAccountId && !isTaskRunning && !isSwitchingAccount) {
+                    switchAccount(selectedId)
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
 
-    private fun loadAccountSession(accountId: Int) {
-        appendLog("Switching to Claude Account #$accountId session...")
-        webView.loadUrl("https://claude.ai/new")
+    private fun loadInitialAccountSession(accountId: Int) {
+        val cm = CookieManager.getInstance()
+        val saved = sessionManager.getSavedCookies(accountId)
+        if (!saved.isNullOrEmpty()) {
+            for (c in saved.split(";")) {
+                val tr = c.trim()
+                if (tr.isNotEmpty()) {
+                    cm.setCookie("https://claude.ai", tr)
+                    cm.setCookie("https://anthropic.com", tr)
+                }
+            }
+            cm.flush()
+            appendLog("Session restored for Account #$accountId.")
+            webView.loadUrl("https://claude.ai/new")
+        } else {
+            appendLog("Account #$accountId requires sign in.")
+            webView.loadUrl("https://claude.ai/login")
+        }
         updateUI()
+    }
+
+    private fun switchAccount(newAccountId: Int) {
+        if (isSwitchingAccount) return
+        isSwitchingAccount = true
+        val oldAccountId = sessionManager.activeAccountId
+        appendLog("Switching: Account #$oldAccountId -> Account #$newAccountId...")
+
+        val cm = CookieManager.getInstance()
+        val currentCookies = cm.getCookie("https://claude.ai")
+        if (!currentCookies.isNullOrEmpty()) {
+            sessionManager.saveSession(oldAccountId, currentCookies)
+        }
+
+        webView.evaluateJavascript("JSON.stringify(window.localStorage);") { storageJson ->
+            if (storageJson != null && storageJson != "null" && storageJson != "{}") {
+                sessionManager.saveSession(oldAccountId, currentCookies, storageJson)
+            }
+
+            runOnUiThread {
+                cm.removeAllCookies {
+                    cm.flush()
+                    WebStorage.getInstance().deleteAllData()
+                    webView.clearCache(true)
+
+                    sessionManager.activeAccountId = newAccountId
+                    updateUI()
+
+                    val targetCookies = sessionManager.getSavedCookies(newAccountId)
+                    if (!targetCookies.isNullOrEmpty()) {
+                        for (c in targetCookies.split(";")) {
+                            val tr = c.trim()
+                            if (tr.isNotEmpty()) {
+                                cm.setCookie("https://claude.ai", tr)
+                                cm.setCookie("https://anthropic.com", tr)
+                            }
+                        }
+                        cm.flush()
+                        appendLog("Account #$newAccountId session restored.")
+                        webView.loadUrl("https://claude.ai/new")
+                    } else {
+                        appendLog("Account #$newAccountId is fresh. Please sign in.")
+                        webView.loadUrl("https://claude.ai/login")
+                    }
+                    isSwitchingAccount = false
+                }
+            }
+        }
+    }
+
+    private fun confirmClearActiveSession() {
+        val accId = sessionManager.activeAccountId
+        AlertDialog.Builder(this)
+            .setTitle("Logout Slot #$accId?")
+            .setMessage("This will clear saved login credentials for Account #$accId so you can sign in with a different account.")
+            .setPositiveButton("Logout Slot") { _, _ ->
+                sessionManager.clearSession(accId)
+                val cm = CookieManager.getInstance()
+                cm.removeAllCookies {
+                    cm.flush()
+                    WebStorage.getInstance().deleteAllData()
+                    webView.clearCache(true)
+                    updateUI()
+                    webView.loadUrl("https://claude.ai/login")
+                    appendLog("Slot #$accId cleared and logged out.")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showTelegramDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_telegram, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create()
+
+        dialogView.findViewById<Button>(R.id.btnOpenTelegram).setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/kalverschannel"))
+            startActivity(intent)
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<Button>(R.id.btnCloseTelegram).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun showTaskPromptDialog() {
@@ -140,77 +280,70 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
         progressBar.visibility = View.VISIBLE
 
         val account = sessionManager.getNextReadyAccount(attemptedAccounts)
-        if (account == null) {
-            appendLog("❌ No ready accounts available!")
+        if (account != null) {
+            attemptedAccounts.add(account.id)
+            sessionManager.activeAccountId = account.id
+            activeAccountSpinner.setSelection(account.id - 1)
+            account.status = "Working"
+            updateUI()
+
+            val fullPrompt = "$incrementalPromptDirective\n\nTASK:\n$originalPrompt"
+            appendLog("Submitting task to ${account.name}...")
+
+            val escaped = fullPrompt.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$").replace("\"", "\\\"")
+            webView.evaluateJavascript("window.KalversMobile.sendPrompt(`$escaped`);", null)
+        } else {
+            appendLog("No ready/logged-in accounts available!")
             isTaskRunning = false
             progressBar.visibility = View.GONE
-            return
         }
-
-        attemptedAccounts.add(account.id)
-        sessionManager.activeAccountId = account.id
-        activeAccountSpinner.setSelection(account.id - 1)
-        account.status = "Working"
-        updateUI()
-
-        val fullPrompt = "$incrementalPromptDirective\n\nTASK:\n$originalPrompt"
-        appendLog("🚀 Submitting task to ${account.name}...")
-
-        val escaped = fullPrompt.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$").replace("\"", "\\\"")
-        webView.evaluateJavascript("window.KalversMobile.sendPrompt(`$escaped`);", null)
     }
 
-    // Bridge Callbacks from JavaScript
     override fun onLog(message: String) {
         runOnUiThread { appendLog(message) }
     }
 
     override fun onLimitDetected(transcript: String, codeJson: String, resetTime: String) {
         runOnUiThread {
-            appendLog("🛑 100% LIMIT DETECTED on Account #${sessionManager.activeAccountId}! Resets at: $resetTime")
+            appendLog("100% LIMIT DETECTED on Account #${sessionManager.activeAccountId}! Resets at: $resetTime")
             sessionManager.markLimitReached(sessionManager.activeAccountId, resetTime)
             updateUI()
 
             currentHandoffSummary = transcript
             currentHandoffCode = codeJson
 
-            // Automatically switch to next account
             val nextAccount = sessionManager.getNextReadyAccount(attemptedAccounts)
-            if (nextAccount == null) {
-                appendLog("❌ All logged-in accounts have reached limits!")
+            if (nextAccount != null) {
+                attemptedAccounts.add(nextAccount.id)
+                switchAccount(nextAccount.id)
+                nextAccount.status = "Working"
+                updateUI()
+
+                appendLog("Auto-switching to ${nextAccount.name} with saved context...")
+
+                webView.postDelayed({
+                    val continuationPrompt = """
+                        $incrementalPromptDirective
+                        ### AUTOMATED HANDOFF FROM PREVIOUS SESSION ###
+                        Completed Material:
+                        $currentHandoffSummary
+                        
+                        Continue directly with remaining files without repeating work.
+                    """.trimIndent()
+                    val escaped = continuationPrompt.replace("`", "\\`").replace("$", "\\$")
+                    webView.evaluateJavascript("window.KalversMobile.sendPrompt(`$escaped`);", null)
+                }, 6500)
+            } else {
+                appendLog("All logged-in accounts have reached limits!")
                 isTaskRunning = false
                 progressBar.visibility = View.GONE
-                return
             }
-
-            attemptedAccounts.add(nextAccount.id)
-            sessionManager.activeAccountId = nextAccount.id
-            activeAccountSpinner.setSelection(nextAccount.id - 1)
-            nextAccount.status = "Working"
-            updateUI()
-
-            appendLog("🔄 Auto-switching to ${nextAccount.name} with saved context...")
-            loadAccountSession(nextAccount.id)
-
-            // Inject continuation prompt once page reloads
-            webView.postDelayed({
-                val continuationPrompt = """
-                    $incrementalPromptDirective
-                    ### AUTOMATED HANDOFF FROM PREVIOUS SESSION ###
-                    Completed Material:
-                    $currentHandoffSummary
-                    
-                    Continue directly with remaining files without repeating work.
-                """.trimIndent()
-                val escaped = continuationPrompt.replace("`", "\\`").replace("$", "\\$")
-                webView.evaluateJavascript("window.KalversMobile.sendPrompt(`$escaped`);", null)
-            }, 6000)
         }
     }
 
     override fun onResponseReady(fullText: String, codeJson: String) {
         runOnUiThread {
-            appendLog("🎉 Claude completed response successfully!")
+            appendLog("Claude completed response successfully!")
             val currentAcc = sessionManager.accounts.find { it.id == sessionManager.activeAccountId }
             currentAcc?.status = "Ready"
             isTaskRunning = false
@@ -227,7 +360,7 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
             dir.mkdirs()
             val file = File(dir, "task_output_${System.currentTimeMillis()}.txt")
             file.writeText(content)
-            appendLog("📁 Output saved to phone: ${file.absolutePath}")
+            appendLog("Output saved to phone: ${file.absolutePath}")
         } catch (e: Exception) {
             appendLog("File save note: ${e.message}")
         }
@@ -242,10 +375,10 @@ class MainActivity : AppCompatActivity(), ClaudeAutomationBridge.BridgeListener 
         val current = sessionManager.accounts.find { it.id == sessionManager.activeAccountId }
         statusBadge.text = current?.status ?: "Unknown"
         when (current?.status) {
-            "Ready" -> statusBadge.setTextColor(getColor(android.R.color.holo_green_light))
-            "Working" -> statusBadge.setTextColor(getColor(android.R.color.holo_blue_light))
-            "Limit Reached" -> statusBadge.setTextColor(getColor(android.R.color.holo_orange_light))
-            else -> statusBadge.setTextColor(getColor(android.R.color.darker_gray))
+            "Ready" -> statusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
+            "Working" -> statusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_blue_light))
+            "Limit Reached" -> statusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_light))
+            else -> statusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray))
         }
     }
 }
