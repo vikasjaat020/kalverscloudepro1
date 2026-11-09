@@ -13,21 +13,14 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Prepare Project and Resources
+    - name: Prepare Project
       run: |
-        # Subfolder se files root par copy karein if nested
+        # Subfolder se files root par copy karein
         if [ -d "kalvers_claude_pro_android" ]; then
-          cp -r kalvers_claude_pro_android/* . 2>/dev/null || true
+          cp -rn kalvers_claude_pro_android/* . 2>/dev/null || cp -r kalvers_claude_pro_android/* . 2>/dev/null || true
         fi
-
-        # If source zip is uploaded, extract it cleanly
-        if [ -f "Kalvers_Claude_Pro_Android_Source.zip" ]; then
-          unzip -q -o Kalvers_Claude_Pro_Android_Source.zip -d temp_src
-          cp -r temp_src/* . 2>/dev/null || true
-          rm -rf temp_src
-        fi
-
-        # AGP 8 compatibility: remove deprecated package tag from manifest
+        
+        # AGP 8 compatibility: remove deprecated package tag
         sed -i 's/package="com.kalvers.claudepro"//g' app/src/main/AndroidManifest.xml || true
 
         echo "sdk.dir=$ANDROID_HOME" > local.properties
