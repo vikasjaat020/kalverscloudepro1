@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#070B14">
+
+    <!-- Top App Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:background="#0F172A"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="Kalvers Logo" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="KALVERS CLAUDE PRO"
+                android:textColor="#F8FAFC"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Multi-Account Auto-Switcher"
+                android:textColor="#38BDF8"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnTelegram"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="✈️ Telegram"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#0088CC"
+            android:layout_marginEnd="6dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
+
+        <TextView
+            android:id="@+id/statusBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ready"
+            android:textColor="#10B981"
+            android:textStyle="bold"
+            android:textSize="11sp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp" />
+    </LinearLayout>
+
+    <!-- Account Selection & Control Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#131E36"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Slot:"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:layout_marginEnd="4dp" />
+
+        <Spinner
+            android:id="@+id/accountSpinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:backgroundTint="#38BDF8" />
+
+        <Button
+            android:id="@+id/btnClearSession"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Logout Slot"
+            android:textSize="9sp"
+            android:textColor="#F87171"
+            android:backgroundTint="#1E293B"
+            android:layout_marginEnd="4dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp" />
+
+        <Button
+            android:id="@+id/btnResetLimits"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Reset Limits"
+            android:textSize="9sp"
+            android:textColor="#CBD5E1"
+            android:backgroundTint="#1E293B"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:indeterminate="true"
+        android:visibility="gone" />
+
+    <!-- Main Claude WebView -->
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Mini Live Log Bar -->
+    <TextView
+        android:id="@+id/logConsole"
+        android:layout_width="match_parent"
+        android:layout_height="65dp"
+        android:padding="6dp"
+        android:background="#040711"
+        android:textColor="#38BDF8"
+        android:fontFamily="monospace"
+        android:textSize="10sp"
+        android:scrollbars="vertical"
+        android:text="Kalvers Claude Pro Mobile Engine initialized..." />
+
+    <!-- Bottom Action Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:background="#0F172A">
+
+        <Button
+            android:id="@+id/btnRunTask"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="🚀 Run Automated Task (Auto-Handoff)"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:backgroundTint="#0284C7" />
+    </LinearLayout>
+
+</LinearLayout>
